@@ -14,6 +14,7 @@ use serenity::{
     prelude::{Context, EventHandler, GatewayIntents},
     Client,
 };
+use systemstat::{System, Platform, saturating_sub_bytes};
 use tracing::{debug, error, info, instrument};
 
 pub struct Handler {
@@ -55,33 +56,106 @@ impl EventHandler for Handler {
 }
 
 async fn log_system_load(ctx: Arc<Context>) {
-    let cpu_load = sys_info::loadavg().unwrap();
-    let mem_use = sys_info::mem_info().unwrap();
+    let sys = System::new();
 
+    let (memory, swap, load_average, uptime, boot_time, cpu_load, cpu_temp, socket_stats) = get_sysinfo_strings(sys).await;
+
+    let message = send_sysinfo_message(ctx, cpu_load, cpu_temp, memory, swap, load_average, uptime, boot_time, socket_stats).await;
+    if let Err(why) = message {
+        error!("Error sending message: {:?}", why);
+    };
+}
+
+async fn send_sysinfo_message(ctx: Arc<Context>, cpu_load: String, cpu_temp: String, memory: String, swap: String, load_average: String, uptime: String, boot_time: String, socket_stats: String) -> Result<serenity::model::prelude::Message, serenity::Error> {
     let message = ChannelId(1068193557116096652)
         .send_message(&ctx, |m| {
             m.embed(|e| {
                 e.title("System Resource Load")
                     .field(
-                        "CPU Load Average",
-                        format!("{:.2}%", cpu_load.one * 10.0),
+                        "CPU load",
+                        cpu_load,
                         false,
                     )
                     .field(
-                        "Memory Usage",
-                        format!(
-                            "{:.2} MB Free out of {:.2} MB",
-                            mem_use.free as f32 / 1000.0,
-                            mem_use.total as f32 / 1000.0
-                        ),
+                        "CPU temp",
+                        cpu_temp,
+                        false,
+                    )
+                    .field(
+                        "Memory",
+                        memory,
+                        false,
+                    )
+                    .field(
+                        "Swap",
+                        swap,
+                        false,
+                    )
+                    .field(
+                        "Load average",
+                        load_average,
+                        false,
+                    )
+                    .field(
+                        "Uptime",
+                        uptime,
+                        false,
+                    )
+                    .field(
+                        "Boot time",
+                        boot_time,
+                        false,
+                    )
+                    .field(
+                        "System socket statistics",
+                        socket_stats,
                         false,
                     )
             })
         })
         .await;
-    if let Err(why) = message {
-        error!("Error sending message: {:?}", why);
+    message
+}
+
+async fn get_sysinfo_strings(sys: System) -> (String, String, String, String, String, String, String, String) {
+    let memory = match sys.memory() {
+        Ok(mem) => format!("{} used / {} ({} bytes) total ({:?})", saturating_sub_bytes(mem.total, mem.free), mem.total, mem.total.as_u64(), mem.platform_memory),
+        Err(x) => format!("error: {}", x),
     };
+    let swap = match sys.swap() {
+        Ok(swap) => format!("{} used / {} ({} bytes) total ({:?})", saturating_sub_bytes(swap.total, swap.free), swap.total, swap.total.as_u64(), swap.platform_swap),
+        Err(x) => format!("error: {}", x),
+    };
+    let load_average = match sys.load_average() {
+        Ok(loadavg) => format!("{} {} {}", loadavg.one, loadavg.five, loadavg.fifteen),
+        Err(x) => format!("error: {}", x),
+    };
+    let uptime = match sys.uptime() {
+        Ok(uptime) => format!("{:?}", uptime),
+        Err(x) => format!("error: {}", x),
+    };
+    let boot_time = match sys.boot_time() {
+        Ok(boot_time) => format!("{}", boot_time),
+        Err(x) => format!("error: {}", x),
+    };
+    let cpu_load = match sys.cpu_load_aggregate() {
+        Ok(cpu)=> {
+            tokio::time::sleep(Duration::from_secs(1)).await;
+            let cpu = cpu.done().unwrap();
+            format!("{}% user, {}% nice, {}% system, {}% intr, {}% idle ",
+                cpu.user * 100.0, cpu.nice * 100.0, cpu.system * 100.0, cpu.interrupt * 100.0, cpu.idle * 100.0)
+        },
+        Err(x) => format!("\nerror: {}", x)
+    };
+    let cpu_temp = match sys.cpu_temp() {
+        Ok(cpu_temp) => format!("{}", cpu_temp),
+        Err(x) => format!("{}", x)
+    };
+    let socket_stats = match sys.socket_stats() {
+        Ok(stats) => format!("{:?}", stats),
+        Err(x) => format!("{}", x)
+    };
+    (memory, swap, load_average, uptime, boot_time, cpu_load, cpu_temp, socket_stats)
 }
 
 async fn set_status_to_current_time(ctx: Arc<Context>) {
