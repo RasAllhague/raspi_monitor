@@ -1,8 +1,20 @@
-use std::{env, sync::{atomic::{AtomicBool, Ordering}, Arc}, time::Duration};
+use std::{
+    env,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+    time::Duration,
+};
 
 use chrono::Utc;
-use serenity::{prelude::{GatewayIntents, EventHandler, Context}, Client, async_trait, model::prelude::{Ready, command::Command, ChannelId, ResumedEvent, Activity}};
-use tracing::{error, instrument, info, debug};
+use serenity::{
+    async_trait,
+    model::prelude::{Activity, ChannelId, Ready, ResumedEvent},
+    prelude::{Context, EventHandler, GatewayIntents},
+    Client,
+};
+use tracing::{debug, error, info, instrument};
 
 pub struct Handler {
     pub is_loop_running: AtomicBool,
