@@ -17,6 +17,8 @@ use serenity::{
 use systemstat::{System, Platform, saturating_sub_bytes};
 use tracing::{debug, error, info, instrument};
 
+const CHANNEL_ID: u64 = 1068193557116096652;
+
 pub struct Handler {
     pub is_loop_running: AtomicBool,
 }
@@ -67,7 +69,7 @@ async fn log_system_load(ctx: Arc<Context>) {
 }
 
 async fn send_sysinfo_message(ctx: Arc<Context>, cpu_load: String, cpu_temp: String, memory: String, swap: String, load_average: String, uptime: String, boot_time: String, socket_stats: String) -> Result<serenity::model::prelude::Message, serenity::Error> {
-    let message = ChannelId(1068193557116096652)
+    let message = ChannelId(CHANNEL_ID)
         .send_message(&ctx, |m| {
             m.embed(|e| {
                 e.title("System Resource Load")
