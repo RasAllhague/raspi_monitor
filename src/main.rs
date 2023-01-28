@@ -119,11 +119,11 @@ async fn send_sysinfo_message(ctx: Arc<Context>, cpu_load: String, cpu_temp: Str
 
 async fn get_sysinfo_strings(sys: System) -> (String, String, String, String, String, String, String, String) {
     let memory = match sys.memory() {
-        Ok(mem) => format!("{} used / {} ({} bytes) total ({:?})", saturating_sub_bytes(mem.total, mem.free), mem.total, mem.total.as_u64(), mem.platform_memory),
+        Ok(mem) => format!("{} used / {} ({} bytes) total", saturating_sub_bytes(mem.total, mem.free), mem.total, mem.total.as_u64()),
         Err(x) => format!("error: {}", x),
     };
     let swap = match sys.swap() {
-        Ok(swap) => format!("{} used / {} ({} bytes) total ({:?})", saturating_sub_bytes(swap.total, swap.free), swap.total, swap.total.as_u64(), swap.platform_swap),
+        Ok(swap) => format!("{} used / {} ({} bytes) total", saturating_sub_bytes(swap.total, swap.free), swap.total, swap.total.as_u64()),
         Err(x) => format!("error: {}", x),
     };
     let load_average = match sys.load_average() {
