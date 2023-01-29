@@ -1,7 +1,7 @@
 use std::{
     env,
     sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, Ordering, AtomicU64},
         Arc,
     },
     time::Duration,
@@ -17,10 +17,9 @@ use serenity::{
 use systemstat::{saturating_sub_bytes, Platform, System};
 use tracing::{debug, error, info, instrument};
 
-const CHANNEL_ID: u64 = 1068193557116096652;
-
 pub struct Handler {
     pub is_loop_running: AtomicBool,
+    pub channel_id: AtomicU64,
 }
 
 #[async_trait]
@@ -32,9 +31,10 @@ impl EventHandler for Handler {
 
         if !self.is_loop_running.load(Ordering::Relaxed) {
             let ctx1 = Arc::clone(&ctx);
+            let channel_id = self.channel_id.load(Ordering::Relaxed);
             tokio::spawn(async move {
                 loop {
-                    log_system_load(Arc::clone(&ctx1)).await;
+                    log_system_load(Arc::clone(&ctx1), channel_id).await;
                     tokio::time::sleep(Duration::from_secs(120)).await;
                 }
             });
@@ -57,7 +57,7 @@ impl EventHandler for Handler {
     }
 }
 
-async fn log_system_load(ctx: Arc<Context>) {
+async fn log_system_load(ctx: Arc<Context>, channel_id: u64) {
     let sys = System::new();
 
     let (memory, swap, load_average, uptime, boot_time, cpu_load, cpu_temp, socket_stats) =
@@ -73,6 +73,7 @@ async fn log_system_load(ctx: Arc<Context>) {
         uptime,
         boot_time,
         socket_stats,
+        channel_id
     )
     .await;
     if let Err(why) = message {
@@ -90,8 +91,9 @@ async fn send_sysinfo_message(
     uptime: String,
     boot_time: String,
     socket_stats: String,
+    channel_id: u64,
 ) -> Result<serenity::model::prelude::Message, serenity::Error> {
-    let message = ChannelId(CHANNEL_ID)
+    let message = ChannelId(channel_id)
         .send_message(&ctx, |m| {
             m.embed(|e| {
                 e.title("System Resource Load")
@@ -198,12 +200,14 @@ async fn set_status_to_current_time(ctx: Arc<Context>) {
 async fn main() {
     tracing_subscriber::fmt::init();
 
-    let token = env::var("RASPI_MONITOR_BOT_TOKEN").expect("Expected a token in the environment");
+    let token = env::var("RASPI_MONITOR_BOT_TOKEN").expect("Expected a token in the environment.");
+    let channel_id = env::var("MONITOR_CHANNEL_ID").expect("Expected channel id in the environment.");
 
     let intents = GatewayIntents::default();
     let mut client = Client::builder(&token, intents)
         .event_handler(Handler {
             is_loop_running: AtomicBool::new(false),
+            channel_id: AtomicU64::new(channel_id.parse::<u64>().expect("Expected valid channel id in environment.")),
         })
         .await
         .expect("Err creating client");
