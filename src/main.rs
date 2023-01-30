@@ -123,36 +123,43 @@ async fn get_sysinfo_strings(
     String,
     String,
 ) {
-    let memory = match sys.memory() {
-        Ok(mem) => format!(
-            "{} used / {} ({} bytes) total",
-            saturating_sub_bytes(mem.total, mem.free),
-            mem.total,
-            mem.total.as_u64()
-        ),
-        Err(x) => format!("error: {}", x),
+    let memory = get_memory_string(&sys);
+    let swap = get_swap_string(&sys);
+    let load_average = get_load_avg_string(&sys);
+    let uptime = get_uptime_string(&sys);
+    let boot_time = get_boot_time_string(&sys);
+    let cpu_load = get_cpu_load_string(&sys).await;
+    let cpu_temp = get_cpu_temp_string(&sys);
+    let socket_stats = get_socket_stats_string(sys);
+    (
+        memory,
+        swap,
+        load_average,
+        uptime,
+        boot_time,
+        cpu_load,
+        cpu_temp,
+        socket_stats,
+    )
+}
+
+fn get_socket_stats_string(sys: System) -> String {
+    let socket_stats = match sys.socket_stats() {
+        Ok(stats) => format!("{:?}", stats),
+        Err(x) => format!("{}", x),
     };
-    let swap = match sys.swap() {
-        Ok(swap) => format!(
-            "{} used / {} ({} bytes) total",
-            saturating_sub_bytes(swap.total, swap.free),
-            swap.total,
-            swap.total.as_u64()
-        ),
-        Err(x) => format!("error: {}", x),
+    socket_stats
+}
+
+fn get_cpu_temp_string(sys: &System) -> String {
+    let cpu_temp = match sys.cpu_temp() {
+        Ok(cpu_temp) => format!("{}", cpu_temp),
+        Err(x) => format!("{}", x),
     };
-    let load_average = match sys.load_average() {
-        Ok(loadavg) => format!("{} {} {}", loadavg.one, loadavg.five, loadavg.fifteen),
-        Err(x) => format!("error: {}", x),
-    };
-    let uptime = match sys.uptime() {
-        Ok(uptime) => format!("{:?}", uptime),
-        Err(x) => format!("error: {}", x),
-    };
-    let boot_time = match sys.boot_time() {
-        Ok(boot_time) => format!("{}", boot_time),
-        Err(x) => format!("error: {}", x),
-    };
+    cpu_temp
+}
+
+async fn get_cpu_load_string(sys: &System) -> String {
     let cpu_load = match sys.cpu_load_aggregate() {
         Ok(cpu) => {
             tokio::time::sleep(Duration::from_secs(1)).await;
@@ -168,24 +175,57 @@ async fn get_sysinfo_strings(
         }
         Err(x) => format!("\nerror: {}", x),
     };
-    let cpu_temp = match sys.cpu_temp() {
-        Ok(cpu_temp) => format!("{}", cpu_temp),
-        Err(x) => format!("{}", x),
+    cpu_load
+}
+
+fn get_boot_time_string(sys: &System) -> String {
+    let boot_time = match sys.boot_time() {
+        Ok(boot_time) => format!("{}", boot_time),
+        Err(x) => format!("error: {}", x),
     };
-    let socket_stats = match sys.socket_stats() {
-        Ok(stats) => format!("{:?}", stats),
-        Err(x) => format!("{}", x),
+    boot_time
+}
+
+fn get_uptime_string(sys: &System) -> String {
+    let uptime = match sys.uptime() {
+        Ok(uptime) => format!("{:?}", uptime),
+        Err(x) => format!("error: {}", x),
     };
-    (
-        memory,
-        swap,
-        load_average,
-        uptime,
-        boot_time,
-        cpu_load,
-        cpu_temp,
-        socket_stats,
-    )
+    uptime
+}
+
+fn get_load_avg_string(sys: &System) -> String {
+    let load_average = match sys.load_average() {
+        Ok(loadavg) => format!("{} {} {}", loadavg.one, loadavg.five, loadavg.fifteen),
+        Err(x) => format!("error: {}", x),
+    };
+    load_average
+}
+
+fn get_swap_string(sys: &System) -> String {
+    let swap = match sys.swap() {
+        Ok(swap) => format!(
+            "{} used / {} ({} bytes) total",
+            saturating_sub_bytes(swap.total, swap.free),
+            swap.total,
+            swap.total.as_u64()
+        ),
+        Err(x) => format!("error: {}", x),
+    };
+    swap
+}
+
+fn get_memory_string(sys: &System) -> String {
+    let memory = match sys.memory() {
+        Ok(mem) => format!(
+            "{} used / {} ({} bytes) total",
+            saturating_sub_bytes(mem.total, mem.free),
+            mem.total,
+            mem.total.as_u64()
+        ),
+        Err(x) => format!("error: {}", x),
+    };
+    memory
 }
 
 async fn set_status_to_current_time(ctx: Arc<Context>) {
