@@ -60,29 +60,15 @@ impl EventHandler for Handler {
 async fn log_system_load(ctx: Arc<Context>, channel_id: u64) {
     let sys = System::new();
 
-    let (memory, swap, load_average, uptime, boot_time, cpu_load, cpu_temp, socket_stats) =
-        get_sysinfo_strings(sys).await;
+    let sys_info_strings = get_sysinfo_strings(sys).await;
 
-    let message = send_sysinfo_message(
-        ctx,
-        cpu_load,
-        cpu_temp,
-        memory,
-        swap,
-        load_average,
-        uptime,
-        boot_time,
-        socket_stats,
-        channel_id,
-    )
-    .await;
+    let message = send_sysinfo_message(ctx, sys_info_strings, channel_id).await;
     if let Err(why) = message {
         error!("Error sending message: {:?}", why);
     };
 }
 
-async fn send_sysinfo_message(
-    ctx: Arc<Context>,
+struct SysInfoStrings {
     cpu_load: String,
     cpu_temp: String,
     memory: String,
@@ -91,38 +77,36 @@ async fn send_sysinfo_message(
     uptime: String,
     boot_time: String,
     socket_stats: String,
+}
+
+async fn send_sysinfo_message(
+    ctx: Arc<Context>,
+    sys_info_strings: SysInfoStrings,
     channel_id: u64,
 ) -> Result<serenity::model::prelude::Message, serenity::Error> {
     let message = ChannelId(channel_id)
         .send_message(&ctx, |m| {
             m.embed(|e| {
                 e.title("System Resource Load")
-                    .field("CPU load", cpu_load, false)
-                    .field("CPU temp", cpu_temp, false)
-                    .field("Memory", memory, false)
-                    .field("Swap", swap, false)
-                    .field("Load average", load_average, false)
-                    .field("Uptime", uptime, false)
-                    .field("Boot time", boot_time, false)
-                    .field("System socket statistics", socket_stats, false)
+                    .field("CPU load", sys_info_strings.cpu_load, false)
+                    .field("CPU temp", sys_info_strings.cpu_temp, false)
+                    .field("Memory", sys_info_strings.memory, false)
+                    .field("Swap", sys_info_strings.swap, false)
+                    .field("Load average", sys_info_strings.load_average, false)
+                    .field("Uptime", sys_info_strings.uptime, false)
+                    .field("Boot time", sys_info_strings.boot_time, false)
+                    .field(
+                        "System socket statistics",
+                        sys_info_strings.socket_stats,
+                        false,
+                    )
             })
         })
         .await;
     message
 }
 
-async fn get_sysinfo_strings(
-    sys: System,
-) -> (
-    String,
-    String,
-    String,
-    String,
-    String,
-    String,
-    String,
-    String,
-) {
+async fn get_sysinfo_strings(sys: System) -> SysInfoStrings {
     let memory = get_memory_string(&sys);
     let swap = get_swap_string(&sys);
     let load_average = get_load_avg_string(&sys);
@@ -131,7 +115,8 @@ async fn get_sysinfo_strings(
     let cpu_load = get_cpu_load_string(&sys).await;
     let cpu_temp = get_cpu_temp_string(&sys);
     let socket_stats = get_socket_stats_string(sys);
-    (
+
+    SysInfoStrings {
         memory,
         swap,
         load_average,
@@ -140,7 +125,7 @@ async fn get_sysinfo_strings(
         cpu_load,
         cpu_temp,
         socket_stats,
-    )
+    }
 }
 
 fn get_socket_stats_string(sys: System) -> String {
