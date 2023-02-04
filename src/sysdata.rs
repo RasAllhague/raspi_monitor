@@ -1,8 +1,11 @@
 use std::io::ErrorKind;
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use systemstat::{saturating_sub_bytes, Duration, Platform, System};
-use tokio::{fs::File, io::{AsyncWriteExt, AsyncReadExt}};
+use tokio::{
+    fs::File,
+    io::{AsyncReadExt, AsyncWriteExt},
+};
 
 use crate::error::SysInfoError;
 
@@ -17,8 +20,6 @@ pub struct SysInfoStrings {
     pub boot_time: String,
     pub socket_stats: String,
 }
-
-
 
 impl SysInfoStrings {
     pub async fn write_log_entry(&self, log_path: &str) -> Result<(), SysInfoError> {
@@ -40,7 +41,10 @@ impl SysInfoStrings {
     }
 }
 
-async fn create_file_if_not_exists(err: std::io::Error, log_path: &str) -> Result<File, std::io::Error> {
+async fn create_file_if_not_exists(
+    err: std::io::Error,
+    log_path: &str,
+) -> Result<File, std::io::Error> {
     if let ErrorKind::NotFound = err.kind() {
         return File::create(log_path).await;
     }
@@ -59,29 +63,29 @@ pub async fn get_sysinfo_strings(sys: System) -> SysInfoStrings {
     let socket_stats = get_socket_stats_string(sys);
 
     SysInfoStrings {
+        cpu_load,
+        cpu_temp,
         memory,
         swap,
         load_average,
         uptime,
         boot_time,
-        cpu_load,
-        cpu_temp,
         socket_stats,
     }
 }
 
 fn get_socket_stats_string(sys: System) -> String {
     let socket_stats = match sys.socket_stats() {
-        Ok(stats) => format!("{:?}", stats),
-        Err(x) => format!("{}", x),
+        Ok(stats) => format!("{stats:?}"),
+        Err(x) => format!("{x}"),
     };
     socket_stats
 }
 
 fn get_cpu_temp_string(sys: &System) -> String {
     let cpu_temp = match sys.cpu_temp() {
-        Ok(cpu_temp) => format!("{}", cpu_temp),
-        Err(x) => format!("{}", x),
+        Ok(cpu_temp) => format!("{cpu_temp}"),
+        Err(x) => format!("{x}"),
     };
     cpu_temp
 }
@@ -100,23 +104,23 @@ async fn get_cpu_load_string(sys: &System) -> String {
                 cpu.idle * 100.0
             )
         }
-        Err(x) => format!("\nerror: {}", x),
+        Err(x) => format!("\nerror: {x}"),
     };
     cpu_load
 }
 
 fn get_boot_time_string(sys: &System) -> String {
     let boot_time = match sys.boot_time() {
-        Ok(boot_time) => format!("{}", boot_time),
-        Err(x) => format!("error: {}", x),
+        Ok(boot_time) => format!("{boot_time}"),
+        Err(x) => format!("error: {x}"),
     };
     boot_time
 }
 
 fn get_uptime_string(sys: &System) -> String {
     let uptime = match sys.uptime() {
-        Ok(uptime) => format!("{:?}", uptime),
-        Err(x) => format!("error: {}", x),
+        Ok(uptime) => format!("{uptime:?}"),
+        Err(x) => format!("error: {x}"),
     };
     uptime
 }
@@ -124,7 +128,7 @@ fn get_uptime_string(sys: &System) -> String {
 fn get_load_avg_string(sys: &System) -> String {
     let load_average = match sys.load_average() {
         Ok(loadavg) => format!("{} {} {}", loadavg.one, loadavg.five, loadavg.fifteen),
-        Err(x) => format!("error: {}", x),
+        Err(x) => format!("error: {x}"),
     };
     load_average
 }
@@ -137,7 +141,7 @@ fn get_swap_string(sys: &System) -> String {
             swap.total,
             swap.total.as_u64()
         ),
-        Err(x) => format!("error: {}", x),
+        Err(x) => format!("error: {x}"),
     };
     swap
 }
@@ -150,7 +154,7 @@ fn get_memory_string(sys: &System) -> String {
             mem.total,
             mem.total.as_u64()
         ),
-        Err(x) => format!("error: {}", x),
+        Err(x) => format!("error: {x}"),
     };
     memory
 }

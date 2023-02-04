@@ -1,10 +1,10 @@
+mod error;
 mod handler;
 mod sysdata;
-mod error;
 
 use std::{
-    env,
-    sync::atomic::{AtomicBool, AtomicU64}, io,
+    env, io,
+    sync::atomic::{AtomicBool, AtomicU64},
 };
 
 use handler::Handler;
@@ -18,9 +18,12 @@ use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter};
 async fn main() {
     dotenv::dotenv().ok();
 
-    let log_directory = env::var("LOG_DIRECTORY").expect("Expected a log directory in the environment.");
-    let log_file_prefix = env::var("LOG_FILE_PREFIX").expect("Expected a log file prefix in the environment.");
-    let statistics_log_path = env::var("STATISTICS_LOG_PATH").expect("Expected a statistics log file path in the environment.");
+    let log_directory =
+        env::var("LOG_DIRECTORY").expect("Expected a log directory in the environment.");
+    let log_file_prefix =
+        env::var("LOG_FILE_PREFIX").expect("Expected a log file prefix in the environment.");
+    let statistics_log_path = env::var("STATISTICS_LOG_PATH")
+        .expect("Expected a statistics log file path in the environment.");
 
     let file_appender = tracing_appender::rolling::hourly(&log_directory, &log_file_prefix);
     let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
