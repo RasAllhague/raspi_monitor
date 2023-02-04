@@ -3,7 +3,7 @@ use std::io::ErrorKind;
 use serde::{Deserialize, Serialize};
 use systemstat::{saturating_sub_bytes, Duration, Platform, System};
 use tokio::{
-    fs::File,
+    fs::{File, OpenOptions},
     io::{AsyncReadExt, AsyncWriteExt},
 };
 
@@ -23,10 +23,12 @@ pub struct SysInfoStrings {
 
 impl SysInfoStrings {
     pub async fn write_log_entry(&self, log_path: &str) -> Result<(), SysInfoError> {
-        let mut file = match File::open(log_path).await {
-            Ok(f) => f,
-            Err(err) => create_file_if_not_exists(err, log_path).await?,
-        };
+        let mut file = OpenOptions::new()
+            .read(true)
+            .append(true)
+            .create(true)
+            .open(log_path)
+            .await?;
 
         let mut contents = String::new();
         file.read_to_string(&mut contents).await?;
@@ -39,17 +41,6 @@ impl SysInfoStrings {
 
         Ok(())
     }
-}
-
-async fn create_file_if_not_exists(
-    err: std::io::Error,
-    log_path: &str,
-) -> Result<File, std::io::Error> {
-    if let ErrorKind::NotFound = err.kind() {
-        return File::create(log_path).await;
-    }
-
-    Err(err)
 }
 
 pub async fn get_sysinfo_strings(sys: System) -> SysInfoStrings {
