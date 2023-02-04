@@ -15,6 +15,8 @@ use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter};
 #[tokio::main]
 #[instrument]
 async fn main() {
+    dotenv::dotenv().ok();
+
     let log_directory = env::var("LOG_DIRECTORY").expect("Expected a log directory in the environment.");
     let log_file_prefix = env::var("LOG_FILE_PREFIX").expect("Expected a log file prefix in the environment.");
 
