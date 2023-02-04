@@ -22,3 +22,5 @@ Uses the systemstat crate.
 ## Environment variables:
  - RASPI_MONITOR_BOT_TOKEN
  - MONITOR_CHANNEL_ID
+ - LOG_DIRECTORY
+ - LOG_FILE_PREFIX
