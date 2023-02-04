@@ -35,9 +35,10 @@ impl SysInfoStrings {
 
         if !contents.is_empty() {
             sys_infos = serde_json::from_str(&contents)?;
-            sys_infos.push(self.clone());
         }
-
+        
+        sys_infos.push(self.clone());
+        
         let json = serde_json::to_string(&sys_infos)?;
         file.write_all(json.as_bytes()).await?;
 
