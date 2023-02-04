@@ -1,9 +1,7 @@
-use std::io::ErrorKind;
-
 use serde::{Deserialize, Serialize};
 use systemstat::{saturating_sub_bytes, Duration, Platform, System};
 use tokio::{
-    fs::{File, OpenOptions},
+    fs::OpenOptions,
     io::{AsyncReadExt, AsyncWriteExt},
 };
 
