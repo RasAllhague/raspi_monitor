@@ -29,7 +29,7 @@ async fn main() {
     let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
 
     let subscriber = tracing_subscriber::registry()
-        .with(EnvFilter::from_default_env().add_directive(tracing::Level::TRACE.into()))
+        .with(EnvFilter::from_default_env().add_directive(tracing::Level::INFO.into()))
         .with(fmt::Layer::new().with_writer(io::stdout))
         .with(fmt::Layer::new().with_writer(non_blocking));
     tracing::subscriber::set_global_default(subscriber).expect("Unable to set a global collector");
