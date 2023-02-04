@@ -31,10 +31,14 @@ impl SysInfoStrings {
         let mut contents = String::new();
         file.read_to_string(&mut contents).await?;
 
-        let mut sys_infos: Vec<SysInfoStrings> = serde_json::from_str(&contents).unwrap();
-        sys_infos.push(self.clone());
+        let sys_infos: Vec<SysInfoStrings> = Vec::new();
 
-        let json = serde_json::to_string(&sys_infos).unwrap();
+        if !contents.is_empty() {
+            let mut sys_infos: Vec<SysInfoStrings> = serde_json::from_str(&contents)?;
+            sys_infos.push(self.clone());
+        }
+
+        let json = serde_json::to_string(&sys_infos)?;
         file.write_all(json.as_bytes()).await?;
 
         Ok(())
