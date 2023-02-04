@@ -832,10 +832,12 @@ dependencies = [
 
 [[package]]
 name = "raspi_monitor"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "chrono",
  "dotenv",
+ "serde",
+ "serde_json",
  "serenity",
  "systemstat",
  "tokio",

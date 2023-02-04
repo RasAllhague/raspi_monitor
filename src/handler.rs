@@ -17,6 +17,7 @@ use crate::sysdata::{get_sysinfo_strings, SysInfoStrings};
 pub struct Handler {
     pub is_loop_running: AtomicBool,
     pub channel_id: AtomicU64,
+    pub statistics_log_path: String,
 }
 
 #[async_trait]
@@ -29,9 +30,10 @@ impl EventHandler for Handler {
         if !self.is_loop_running.load(Ordering::Relaxed) {
             let ctx1 = Arc::clone(&ctx);
             let channel_id = self.channel_id.load(Ordering::Relaxed);
+            let log_path = self.statistics_log_path.clone();
             tokio::spawn(async move {
                 loop {
-                    log_system_load(Arc::clone(&ctx1), channel_id).await;
+                    log_system_load(Arc::clone(&ctx1), channel_id, &log_path).await;
                     tokio::time::sleep(Duration::from_secs(120)).await;
                 }
             });
@@ -54,10 +56,14 @@ impl EventHandler for Handler {
     }
 }
 
-async fn log_system_load(ctx: Arc<Context>, channel_id: u64) {
+async fn log_system_load(ctx: Arc<Context>, channel_id: u64, log_path: &str) {
     let sys = System::new();
 
     let sys_info_strings = get_sysinfo_strings(sys).await;
+
+    if let Err(why) = sys_info_strings.write_log_entry(log_path).await {
+        error!("Error writing statistics: {:?}", why);
+    };
 
     let message = send_sysinfo_message(ctx, sys_info_strings, channel_id).await;
     if let Err(why) = message {

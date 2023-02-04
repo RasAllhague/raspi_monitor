@@ -1,5 +1,12 @@
-use systemstat::{saturating_sub_bytes, Duration, Platform, System};
+use std::io::ErrorKind;
 
+use serde::{Serialize, Deserialize};
+use systemstat::{saturating_sub_bytes, Duration, Platform, System};
+use tokio::{fs::File, io::{AsyncWriteExt, AsyncReadExt}};
+
+use crate::error::SysInfoError;
+
+#[derive(Serialize, Deserialize, Clone)]
 pub struct SysInfoStrings {
     pub cpu_load: String,
     pub cpu_temp: String,
@@ -9,6 +16,36 @@ pub struct SysInfoStrings {
     pub uptime: String,
     pub boot_time: String,
     pub socket_stats: String,
+}
+
+
+
+impl SysInfoStrings {
+    pub async fn write_log_entry(&self, log_path: &str) -> Result<(), SysInfoError> {
+        let mut file = match File::open(log_path).await {
+            Ok(f) => f,
+            Err(err) => create_file_if_not_exists(err, log_path).await?,
+        };
+
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).await?;
+
+        let mut sys_infos: Vec<SysInfoStrings> = serde_json::from_str(&contents).unwrap();
+        sys_infos.push(self.clone());
+
+        let json = serde_json::to_string(&sys_infos).unwrap();
+        file.write_all(json.as_bytes()).await?;
+
+        Ok(())
+    }
+}
+
+async fn create_file_if_not_exists(err: std::io::Error, log_path: &str) -> Result<File, std::io::Error> {
+    if let ErrorKind::NotFound = err.kind() {
+        return File::create(log_path).await;
+    }
+
+    Err(err)
 }
 
 pub async fn get_sysinfo_strings(sys: System) -> SysInfoStrings {

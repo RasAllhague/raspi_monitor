@@ -24,3 +24,4 @@ Uses the systemstat crate.
  - MONITOR_CHANNEL_ID
  - LOG_DIRECTORY
  - LOG_FILE_PREFIX
+ - STATISTICS_LOG_PATH
